@@ -21,5 +21,5 @@ def rd_rgba_image(width, height) :
 
 if __name__ == '__main__' :
     # print([hex(int(e)) for e in  Image([[255]])._get_content()])
-    Image([[(255, 0, 0, 100)]*20]*20).save('img.png', debug=True)
-    # Image(rd_rgba_image(2, 2)).save('img.png', debug=True)
+    # Image([[(255, 0, 0, 100)]*20]*20).save('img.png', debug=True)
+    Image(rd_rgba_image(20, 20)).save('img.png', debug=True)

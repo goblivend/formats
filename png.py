@@ -87,32 +87,33 @@ class PngEncoder:
         if self.debug :
             print('=== IDAT chunk ===')
 
-        cmf = 8
-        fill = 31 - ((cmf * 2 ** 8) % 31)
-        cmf_flg = self.to_bytes(cmf * 2**8 + fill, 2)
-        
-
-        l = min(200, len(self.idat_content) - self.idat_index) 
+        l = min(64, len(self.idat_content) - self.idat_index) 
         
 
         # XXXX XYYZ : 
         # Z = last block, 
         # YY = compression :00 for none, 01 for fixed huffman compression, 10 dynamic huffman compression, 11 reserved for errors
         # XXXXX Unknown
-        last_block = b'\x01' if self.idat_index+l == len(self.idat_content) else b'\x00'
+        # last_block = b'\x01' if self.idat_index+l == len(self.idat_content) else b'\x00'
+        # Edit: actually last_block used in general IDAT content not specific IDAT chunk so of course it's the last one since that's always the only one.....
 
         if self.debug :
-            print(f'Creating' + (' last' if last_block == b'\x01' else ''), 'IDAT chunk')
-            print(f'With cmf flag : {cmf_flg}')
+            print(f'Creating'+ (' last' if l + self.idat_index == len(self.idat_content) else ''), 'IDAT chunk')
             print(f'With size : {l}')
-        nlen = ones_complement(l, 16).to_bytes(2, byteorder='little')
+            # print(f'With cmf flag : {cmf_flg}')
         data = self.idat_content[self.idat_index: self.idat_index+l] 
-        content = cmf_flg + last_block + l.to_bytes(2, byteorder='little') + nlen + data + zlib.adler32(data).to_bytes(4, byteorder='big')
+        content =data #cmf_flg + last_block + data 
 
         self.idat_index += l
         return self._get_chunk('IDAT', content)
 
     def _get_idat_content(self, plte) :
+        if self.debug :
+            print(f'Getting IDAT contents')
+        cmf = 8
+        fill = 31 - ((cmf * 2 ** 8) % 31)
+        cmf_flg = self.to_bytes(cmf * 2**8 + fill, 2)
+
         data = b''
 
         for scanline in self.data :
@@ -128,10 +129,14 @@ class PngEncoder:
                     curr += self.to_bytes(self.palette[e], 1)
             data += curr
 
+        l = len(data)
+        print(l)
+        nlen = ones_complement(l, 16).to_bytes(2, byteorder='little')
+        content = cmf_flg + b'\x01' +  l.to_bytes(2, byteorder='little') + nlen + data + zlib.adler32(data).to_bytes(4, byteorder='big')
 
         if self.debug :
-            print(f'IDAT content: {len(data)}')
-        return data
+            print(f'IDAT content: {len(content)}')
+        return content
 
     def _get_idat_chunks(self, plte=False) :
         self.idat_index = 0
@@ -227,3 +232,4 @@ class PngEncoder:
 # https://zestedesavoir.com/billets/4045/faconner-un-fichier-png-a-la-main/#fn-3-Q0xZuxCOUu
 # https://fr.wikipedia.org/wiki/Portable_Network_Graphics
 # Inspector : https://www.nayuki.io/page/png-file-chunk-inspector
+# Filters : http://www.libpng.org/pub/png/spec/1.2/PNG-Filters.html
